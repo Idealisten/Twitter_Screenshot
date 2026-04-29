@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,8 +16,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = Path(__file__).resolve().parent
 STATIC = ROOT / "static"
-HOST = "127.0.0.1"
-PORT = 8000
+HOST = os.environ.get("HOST", "127.0.0.1")
+PORT = int(os.environ.get("PORT", "8000"))
 REQUEST_HEADERS = {
     "User-Agent": "XShareCardMaker/1.0 (+https://localhost)",
     "Accept": "application/json,text/html,image/*;q=0.9,*/*;q=0.8",

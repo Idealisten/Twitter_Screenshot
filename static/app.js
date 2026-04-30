@@ -553,7 +553,7 @@ function drawQuoteCard(context, quote, quoteAssets, x, y, width) {
   context.clip();
 
   const author = quote.author || {};
-  const avatarSize = 52;
+  const avatarSize = 56;
   const headerY = y + padding;
   drawAvatar(context, quoteAssets?.avatar, x + padding, headerY, avatarSize, author.name);
 
@@ -562,7 +562,7 @@ function drawQuoteCard(context, quote, quoteAssets, x, y, width) {
   context.font = font(31, 800);
   context.fillStyle = "#0f1b16";
   const nameX = x + padding + avatarSize + 12;
-  const nameY = headerY + 34;
+  const nameY = headerY + 32;
   let name = author.name || "X User";
   const maxNameWidth = width - padding * 2 - avatarSize - 280;
   while (context.measureText(name).width > maxNameWidth && name.length > 3) {
@@ -627,7 +627,7 @@ async function renderCard(tweet) {
   const quoteTopGap = tweet.quote ? 28 : 0;
   const measuredQuoteHeight = measureQuoteCard(tweet.quote, assets.quote, maxTextWidth);
 
-  const contentTop = 192;
+  const contentTop = 176;
   const footerHeight = 74;
   const cardHeight = Math.ceil(
     contentTop + textHeight + mediaTopGap + measuredMediaHeight + quoteTopGap + measuredQuoteHeight + footerHeight + 40,
@@ -641,16 +641,16 @@ async function renderCard(tweet) {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, CARD_WIDTH, cardHeight);
 
-  const avatarSize = 78;
-  const avatarY = 68;
-  const headerTextX = paddingX + avatarSize + 12;
+  const avatarSize = 90;
+  const avatarY = 58;
+  const headerTextX = paddingX + avatarSize + 14;
   drawAvatar(ctx, assets.avatar, paddingX, avatarY, avatarSize, author.name);
 
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
   ctx.font = font(31, 800);
   ctx.fillStyle = "#0f1b16";
-  const nameY = 105;
+  const nameY = 94;
   let fittedName = author.name || "X User";
   const maxNameWidth = CARD_WIDTH - paddingX * 2 - avatarSize - 160;
   while (ctx.measureText(fittedName).width > maxNameWidth && fittedName.length > 3) {
@@ -664,8 +664,8 @@ async function renderCard(tweet) {
 
   ctx.font = font(31, 440);
   ctx.fillStyle = "#536372";
-  ctx.fillText(`@${author.handle || "user"}`, headerTextX, 151);
-  drawXLogo(ctx, CARD_WIDTH - 94, 116);
+  ctx.fillText(`@${author.handle || "user"}`, headerTextX, 132);
+  drawXLogo(ctx, CARD_WIDTH - 94, 104);
 
   ctx.font = font(profile.size, 420);
   ctx.fillStyle = "#111b16";

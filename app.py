@@ -16,6 +16,8 @@ import requests
 from bs4 import BeautifulSoup
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from PIL import Image, ImageDraw, ImageFont, ImageOps
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright
 
 
 ROOT = Path(__file__).resolve().parent
@@ -28,6 +30,8 @@ REQUEST_HEADERS = {
 }
 CARD_WIDTH = 980
 CARD_PADDING_X = 62
+RENDER_HOST = os.environ.get("RENDER_HOST", "127.0.0.1")
+CHROMIUM_PATH = os.environ.get("CHROMIUM_PATH", "/usr/bin/chromium")
 
 
 class FetchError(Exception):
@@ -345,6 +349,45 @@ def text_response(handler: BaseHTTPRequestHandler, status: int, message: str) ->
     handler.send_header("Content-Length", str(len(payload)))
     handler.end_headers()
     handler.wfile.write(payload)
+
+
+def browser_render_url(raw_url: str) -> str:
+    return f"http://{RENDER_HOST}:{PORT}/static/render.html?url={quote(raw_url, safe='')}"
+
+
+def render_tweet_png_in_browser(raw_url: str) -> bytes:
+    launch_options: dict[str, Any] = {
+        "headless": True,
+        "args": ["--no-sandbox", "--disable-dev-shm-usage"],
+    }
+    chromium_path = Path(CHROMIUM_PATH)
+    if chromium_path.exists():
+        launch_options["executable_path"] = str(chromium_path)
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(**launch_options)
+        try:
+            page = browser.new_page(
+                viewport={"width": CARD_WIDTH, "height": 2400},
+                device_scale_factor=2,
+            )
+            page.goto(browser_render_url(raw_url), wait_until="networkidle", timeout=45000)
+            page.wait_for_function("window.__xshotRenderStatus === 'ready' || window.__xshotRenderStatus === 'error'", timeout=45000)
+            status = page.evaluate("window.__xshotRenderStatus")
+            if status != "ready":
+                error = page.evaluate("window.__xshotRenderError || '浏览器渲染失败。'")
+                raise FetchError(error)
+            data_url = page.locator("#cardCanvas").evaluate("canvas => canvas.toDataURL('image/png')")
+            match = re.fullmatch(r"data:image/png;base64,(.+)", data_url)
+            if not match:
+                raise FetchError("浏览器没有返回有效 PNG。")
+            import base64
+
+            return base64.b64decode(match.group(1))
+        except PlaywrightTimeoutError as exc:
+            raise FetchError("浏览器渲染超时，请稍后重试。") from exc
+        finally:
+            browser.close()
 
 
 def font_candidates(bold: bool = False) -> list[str]:
@@ -843,11 +886,12 @@ class AppHandler(BaseHTTPRequestHandler):
             url = payload.get("url", "")
             if not isinstance(url, str) or not url.strip():
                 raise FetchError("请先输入帖子链接。")
-            data = fetch_tweet(url)
             if parsed_path == "/api/render":
-                png = render_tweet_png(data)
-                image_response(self, 200, png, f"x-share-card-{data.get('id') or 'tweet'}.png")
+                info = parse_status_url(url)
+                png = render_tweet_png_in_browser(url)
+                image_response(self, 200, png, f"x-share-card-{info['status_id']}.png")
             else:
+                data = fetch_tweet(url)
                 json_response(self, 200, {"ok": True, "tweet": data})
         except FetchError as exc:
             if parsed_path == "/api/render":
@@ -865,9 +909,9 @@ class AppHandler(BaseHTTPRequestHandler):
         try:
             if not url.strip():
                 raise FetchError("请先提供帖子链接。")
-            data = fetch_tweet(url)
-            png = render_tweet_png(data)
-            image_response(self, 200, png, f"x-share-card-{data.get('id') or 'tweet'}.png")
+            info = parse_status_url(url)
+            png = render_tweet_png_in_browser(url)
+            image_response(self, 200, png, f"x-share-card-{info['status_id']}.png")
         except FetchError as exc:
             text_response(self, 422, str(exc))
         except Exception as exc:  # noqa: BLE001

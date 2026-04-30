@@ -21,6 +21,7 @@ const STAT_ICON_PATHS = {
 };
 const QUOTE_MEDIA_GAP = 36;
 const MAX_SINGLE_PHOTO_HEIGHT = 2200;
+const VERIFIED_BADGE_GAP = 20;
 const sampleTweet = {
   text:
     "工信部将开展AI+软件专项行动\n\n这件事在去年12月的中央经济工作会议的时候已经预定了。\n当时也给大家展开说了。\n\nAI的机会巨大，如果能有机会介入任何一个央企的AI转型，都足够小公司吃好几年了。",
@@ -267,6 +268,10 @@ function drawSvgPath(context, pathData, x, y, size, color, viewBox = 24) {
 function drawXLogo(context, x, y) {
   const size = 59;
   drawSvgPath(context, X_LOGO_PATH, x - size / 2, y - size / 2, size, "#0f1b16");
+}
+
+function drawInlineVerified(context, textX, textWidth, baselineY, size, color) {
+  drawVerified(context, textX + textWidth + VERIFIED_BADGE_GAP + size / 2, baselineY - 11, size, color);
 }
 
 function drawStatIcon(context, type, x, y, color) {
@@ -548,28 +553,29 @@ function drawQuoteCard(context, quote, quoteAssets, x, y, width) {
   context.clip();
 
   const author = quote.author || {};
-  const avatarSize = 48;
+  const avatarSize = 52;
   const headerY = y + padding;
   drawAvatar(context, quoteAssets?.avatar, x + padding, headerY, avatarSize, author.name);
 
   context.textAlign = "left";
   context.textBaseline = "alphabetic";
-  context.font = font(30, 800);
+  context.font = font(31, 800);
   context.fillStyle = "#0f1b16";
-  const nameX = x + padding + avatarSize + 10;
-  const nameY = headerY + 32;
+  const nameX = x + padding + avatarSize + 12;
+  const nameY = headerY + 34;
   let name = author.name || "X User";
-  const maxNameWidth = width - padding * 2 - avatarSize - 260;
+  const maxNameWidth = width - padding * 2 - avatarSize - 280;
   while (context.measureText(name).width > maxNameWidth && name.length > 3) {
     name = `${name.slice(0, -2)}…`;
   }
   context.fillText(name, nameX, nameY);
-  let metaX = nameX + context.measureText(name).width + 14;
+  const nameWidth = context.measureText(name).width;
+  let metaX = nameX + nameWidth + 16;
   if (author.verified) {
-    drawVerified(context, metaX + 14, nameY - 11, 31, verifiedColor(author));
-    metaX += 40;
+    drawInlineVerified(context, nameX, nameWidth, nameY, 31, verifiedColor(author));
+    metaX += VERIFIED_BADGE_GAP + 31;
   }
-  context.font = font(30, 440);
+  context.font = font(31, 440);
   context.fillStyle = "#536372";
   context.fillText(`@${author.handle || "user"} · ${shortDateLabel(quote.date_label || "")}`, metaX, nameY);
 
@@ -635,28 +641,30 @@ async function renderCard(tweet) {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, CARD_WIDTH, cardHeight);
 
-  const avatarSize = 68;
-  drawAvatar(ctx, assets.avatar, paddingX, 75, avatarSize, author.name);
+  const avatarSize = 78;
+  const avatarY = 68;
+  const headerTextX = paddingX + avatarSize + 12;
+  drawAvatar(ctx, assets.avatar, paddingX, avatarY, avatarSize, author.name);
 
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
-  ctx.font = font(29, 800);
+  ctx.font = font(31, 800);
   ctx.fillStyle = "#0f1b16";
-  const nameY = 104;
+  const nameY = 105;
   let fittedName = author.name || "X User";
-  const maxNameWidth = CARD_WIDTH - paddingX * 2 - avatarSize - 130;
+  const maxNameWidth = CARD_WIDTH - paddingX * 2 - avatarSize - 160;
   while (ctx.measureText(fittedName).width > maxNameWidth && fittedName.length > 3) {
     fittedName = `${fittedName.slice(0, -2)}…`;
   }
-  ctx.fillText(fittedName, paddingX + avatarSize + 18, nameY);
+  ctx.fillText(fittedName, headerTextX, nameY);
   const nameWidth = ctx.measureText(fittedName).width;
   if (author.verified) {
-    drawVerified(ctx, paddingX + avatarSize + 30 + nameWidth, nameY - 11, 31, verifiedColor(author));
+    drawInlineVerified(ctx, headerTextX, nameWidth, nameY, 31, verifiedColor(author));
   }
 
-  ctx.font = font(30, 440);
+  ctx.font = font(31, 440);
   ctx.fillStyle = "#536372";
-  ctx.fillText(`@${author.handle || "user"}`, paddingX + avatarSize + 18, 149);
+  ctx.fillText(`@${author.handle || "user"}`, headerTextX, 151);
   drawXLogo(ctx, CARD_WIDTH - 94, 116);
 
   ctx.font = font(profile.size, 420);

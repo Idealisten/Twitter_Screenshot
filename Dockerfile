@@ -9,7 +9,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends fonts-noto-cjk fonts-noto-color-emoji \
+    && apt-get install -y --no-install-recommends chromium fonts-noto-cjk fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir -r requirements.txt
 

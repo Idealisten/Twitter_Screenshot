@@ -20,6 +20,7 @@ const STAT_ICON_PATHS = {
     "M16.697 5.5c-1.222-.06-2.679.51-3.89 2.16l-.805 1.09-.806-1.09C9.984 6.01 8.526 5.44 7.304 5.5c-1.243.07-2.349.78-2.91 1.91-.552 1.12-.633 2.78.479 4.82 1.074 1.97 3.257 4.27 7.129 6.61 3.87-2.34 6.052-4.64 7.126-6.61 1.111-2.04 1.03-3.7.477-4.82-.561-1.13-1.666-1.84-2.908-1.91zm4.187 7.69c-1.351 2.48-4.001 5.12-8.379 7.67l-.503.3-.504-.3c-4.379-2.55-7.029-5.19-8.382-7.67-1.36-2.5-1.41-4.86-.514-6.67.887-1.79 2.647-2.91 4.601-3.01 1.651-.09 3.368.56 4.798 2.01 1.429-1.45 3.146-2.1 4.798-2.01 1.954.1 3.714 1.22 4.601 3.01.896 1.81.846 4.17-.514 6.67z",
 };
 const QUOTE_MEDIA_GAP = 36;
+const MAX_SINGLE_PHOTO_HEIGHT = 2200;
 const sampleTweet = {
   text:
     "工信部将开展AI+软件专项行动\n\n这件事在去年12月的中央经济工作会议的时候已经预定了。\n当时也给大家展开说了。\n\nAI的机会巨大，如果能有机会介入任何一个央企的AI转型，都足够小公司吃好几年了。",
@@ -328,6 +329,20 @@ function drawImageCover(context, image, x, y, width, height, radius) {
   context.restore();
 }
 
+function drawImageContain(context, image, x, y, width, height, radius) {
+  drawRoundRect(context, x, y, width, height, radius, "#f1f5f7", "#d1dee5", 2);
+  context.save();
+  roundRectPath(context, x + 1, y + 1, width - 2, height - 2, radius - 1);
+  context.clip();
+  if (image) {
+    const scale = Math.min(width / image.width, height / image.height);
+    const drawWidth = image.width * scale;
+    const drawHeight = image.height * scale;
+    context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+  }
+  context.restore();
+}
+
 function drawImageCoverRaw(context, image, x, y, width, height) {
   context.fillStyle = "#f1f5f7";
   context.fillRect(x, y, width, height);
@@ -336,6 +351,20 @@ function drawImageCoverRaw(context, image, x, y, width, height) {
   const drawWidth = image.width * scale;
   const drawHeight = image.height * scale;
   context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+function drawImageContainRaw(context, image, x, y, width, height) {
+  context.fillStyle = "#f1f5f7";
+  context.fillRect(x, y, width, height);
+  if (!image) return;
+  const scale = Math.min(width / image.width, height / image.height);
+  const drawWidth = image.width * scale;
+  const drawHeight = image.height * scale;
+  context.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+function isVideoMedia(item = {}) {
+  return item.type === "video" || item.type === "gif";
 }
 
 function formatDuration(seconds) {
@@ -389,9 +418,11 @@ function drawQuoteMedia(context, items, images, x, y, width, height) {
   context.fillRect(x, y, width, height);
 
   if (count === 1) {
-    drawImageCoverRaw(context, images[0], x, y, width, height);
-    if (items[0]?.type === "video" || items[0]?.type === "gif") {
+    if (isVideoMedia(items[0])) {
+      drawImageCoverRaw(context, images[0], x, y, width, height);
       drawVideoOverlay(context, items[0], x, y, width, height);
+    } else {
+      drawImageContainRaw(context, images[0], x, y, width, height);
     }
   } else {
     const gap = 4;
@@ -403,7 +434,7 @@ function drawQuoteMedia(context, items, images, x, y, width, height) {
       const px = x + col * (cellW + gap);
       const py = y + row * (cellH + gap);
       drawImageCoverRaw(context, images[i], px, py, cellW, cellH);
-      if (items[i]?.type === "video" || items[i]?.type === "gif") {
+      if (isVideoMedia(items[i])) {
         drawVideoOverlay(context, items[i], px, py, cellW, cellH);
       }
     }
@@ -426,7 +457,7 @@ function measureMediaHeight(items = [], images = [], width, variant = "main") {
     if (item.placeholder) return 294;
     const image = images[0];
     const rawRatio = item.width && item.height ? item.height / item.width : image ? image.height / image.width : 0.56;
-    const maxHeight = variant === "quote" ? width : 520;
+    const maxHeight = isVideoMedia(item) ? (variant === "quote" ? width : 520) : MAX_SINGLE_PHOTO_HEIGHT;
     return Math.max(250, Math.min(maxHeight, width * rawRatio));
   }
   if (variant === "quote") {
@@ -450,9 +481,11 @@ function mediaLayout(items, images, x, y, width, variant = "main") {
       drawQuoteMedia(ctx, items, images, x, y, width, height);
       return height;
     }
-    drawImageCover(ctx, image, x, y, width, height, 18);
-    if (item.type === "video" || item.type === "gif") {
+    if (isVideoMedia(item)) {
+      drawImageCover(ctx, image, x, y, width, height, 18);
       drawVideoOverlay(ctx, item, x, y, width, height);
+    } else {
+      drawImageContain(ctx, image, x, y, width, height, 18);
     }
     return height;
   }
@@ -471,12 +504,12 @@ function mediaLayout(items, images, x, y, width, variant = "main") {
     const py = y + row * (cellH + gap);
     if (variant === "quote") {
       drawImageCoverRaw(ctx, images[i], px, py, cellW, cellH);
-      if (items[i]?.type === "video" || items[i]?.type === "gif") {
+      if (isVideoMedia(items[i])) {
         drawVideoOverlay(ctx, items[i], px, py, cellW, cellH);
       }
     } else {
       drawImageCover(ctx, images[i], px, py, cellW, cellH, 14);
-      if (items[i]?.type === "video" || items[i]?.type === "gif") {
+      if (isVideoMedia(items[i])) {
         drawVideoOverlay(ctx, items[i], px, py, cellW, cellH);
       }
     }

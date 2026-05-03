@@ -7,13 +7,13 @@
 网站必须能通过 HTTPS 访问，例如：
 
 ```text
-https://xshot.journeytofreedom.homes
+https://xshot.example.com
 ```
 
 并且下面这个接口可以返回图片：
 
 ```text
-https://xshot.journeytofreedom.homes/api/render?url=https%3A%2F%2Fx.com%2Felonmusk%2Fstatus%2F2044250132296986737
+https://xshot.example.com/api/render?url=https%3A%2F%2Fx.com%2Felonmusk%2Fstatus%2F2044250132296986737
 ```
 
 ## 快捷指令设置
@@ -42,7 +42,7 @@ XShot 保存分享图
    - 内容：
 
 ```text
-https://xshot.journeytofreedom.homes/api/render?url=
+https://xshot.example.com/api/render?url=
 ```
 
    - 在这段文本末尾插入第 3 步得到的“已编码文本”
@@ -64,12 +64,12 @@ https://xshot.journeytofreedom.homes/api/render?url=
 在 X App 中打开一条帖子：
 
 1. 点分享按钮
-2. 选择“分享至... ”
+2. 选择“分享至...”
 3. 选择“XShot 保存分享图”
 4. 等待几秒，图片会保存到相册
 
 如果快捷指令提示失败，先在 Safari 打开下面的测试地址，确认网站接口可以返回图片：
 
 ```text
-https://xshot.journeytofreedom.homes/api/render?url=https%3A%2F%2Fx.com%2Felonmusk%2Fstatus%2F2044250132296986737
+https://xshot.example.com/api/render?url=https%3A%2F%2Fx.com%2Felonmusk%2Fstatus%2F2044250132296986737
 ```

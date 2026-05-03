@@ -42,7 +42,25 @@ docker build -t twitter-screenshot .
 
 ### 3. 启动网站容器
 
-推荐只绑定到服务器本机地址，避免直接暴露 `8000` 到公网：
+推荐使用启动脚本。它只绑定服务器本机地址，并且会从 `8000` 开始尝试；如果端口被占用，会自动尝试 `8001`、`8002`：
+
+```bash
+./run-docker.sh
+```
+
+脚本会输出实际使用的端口，例如：
+
+```text
+local URL: http://127.0.0.1:8001
+```
+
+如需指定起始端口：
+
+```bash
+HOST_PORT=9000 ./run-docker.sh
+```
+
+也可以手动启动，推荐只绑定到服务器本机地址，避免直接暴露 `8000` 到公网：
 
 ```bash
 docker run -d \
@@ -106,6 +124,12 @@ ingress:
   - service: http_status:404
 ```
 
+如果 `./run-docker.sh` 自动选择了 `8001` 或其他端口，把这里的 `service` 改成脚本输出的实际端口，例如：
+
+```yaml
+service: http://127.0.0.1:8001
+```
+
 绑定域名：
 
 ```bash
@@ -165,7 +189,13 @@ docker build -t twitter-screenshot .
 docker rm -f twitter-screenshot
 ```
 
-用新镜像启动：
+用新镜像启动。推荐用脚本，它会优先复用旧容器之前使用的端口；如果端口被其他程序占用，会自动向后尝试：
+
+```bash
+./run-docker.sh
+```
+
+也可以手动启动：
 
 ```bash
 docker run -d \

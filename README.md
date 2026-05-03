@@ -35,7 +35,25 @@ docker build -t twitter-screenshot .
 
 ### 2. 启动容器
 
-如果只是本地测试，可以直接暴露 `8000`：
+推荐使用启动脚本，它会从 `8000` 开始尝试；如果端口被占用，会自动尝试 `8001`、`8002`：
+
+```bash
+./run-docker.sh
+```
+
+脚本会输出实际使用的本地地址，例如：
+
+```text
+local URL: http://127.0.0.1:8001
+```
+
+如需指定起始端口：
+
+```bash
+HOST_PORT=9000 ./run-docker.sh
+```
+
+如果只是本地测试，也可以手动直接暴露 `8000`：
 
 ```bash
 docker run -d \
@@ -51,7 +69,7 @@ docker run -d \
 http://服务器IP:8000
 ```
 
-服务器部署时，更推荐只监听服务器本机地址，再交给 Cloudflare Tunnel 转发：
+服务器部署时，更推荐只监听服务器本机地址，再交给 Cloudflare Tunnel 转发。`./run-docker.sh` 默认就是这种方式；如果手动运行，可以这样写：
 
 ```bash
 docker run -d \
@@ -144,6 +162,12 @@ https://xshot.example.com
 
 ```text
 https://xshot.example.com/api/render?url=URL编码后的X帖子链接
+```
+
+如果 `./run-docker.sh` 自动选择了 `8001` 或其他端口，需要把 Cloudflare Tunnel 配置里的 `service` 改成对应端口，例如：
+
+```yaml
+service: http://127.0.0.1:8001
 ```
 
 ## 说明

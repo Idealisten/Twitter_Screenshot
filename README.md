@@ -83,8 +83,8 @@ https://你的域名/api/render?url=URL编码后的X帖子链接
 7. 使用“存储到照片相册”，保存上一步返回的图片。
 8. 可选：使用“显示通知”，提示“分享图已保存”。
 
-如果你的域名是 `https://xshot.journeytofreedom.homes`，第 5 步的地址就是：
+如果你的域名是 `https://xshot.example.com`，第 5 步的地址就是：
 
 ```text
-https://xshot.journeytofreedom.homes/api/render?url=编码后的链接
+https://xshot.example.com/api/render?url=编码后的链接
 ```

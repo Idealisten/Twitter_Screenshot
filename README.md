@@ -25,13 +25,17 @@ HOST=127.0.0.1 PORT=9000 python3 app.py
 
 服务器部署和后续更新的详细步骤见：[DEPLOY.md](DEPLOY.md)。
 
+### 1. 构建镜像
+
 构建镜像：
 
 ```bash
 docker build -t twitter-screenshot .
 ```
 
-本地或服务器运行：
+### 2. 启动容器
+
+如果只是本地测试，可以直接暴露 `8000`：
 
 ```bash
 docker run -d \
@@ -47,14 +51,99 @@ docker run -d \
 http://服务器IP:8000
 ```
 
-如需换端口，例如宿主机用 `9000`：
+服务器部署时，更推荐只监听服务器本机地址，再交给 Cloudflare Tunnel 转发：
 
 ```bash
 docker run -d \
   --name twitter-screenshot \
-  -p 9000:8000 \
+  -p 127.0.0.1:8000:8000 \
   --restart unless-stopped \
   twitter-screenshot
+```
+
+检查容器：
+
+```bash
+docker ps
+curl http://127.0.0.1:8000/
+```
+
+### 3. 用 Cloudflare Tunnel 暴露到公网
+
+如果服务器已经安装 `cloudflared`，可以跳过安装步骤。
+
+安装 `cloudflared`：
+
+```bash
+mkdir -p --mode=0755 /usr/share/keyrings
+curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main" | sudo tee /etc/apt/sources.list.d/cloudflared.list
+sudo apt update
+sudo apt install -y cloudflared
+```
+
+登录 Cloudflare：
+
+```bash
+cloudflared tunnel login
+```
+
+创建 Tunnel：
+
+```bash
+cloudflared tunnel create xshot
+```
+
+创建配置文件：
+
+```bash
+sudo mkdir -p /etc/cloudflared
+sudo nano /etc/cloudflared/config.yml
+```
+
+把 `你的TunnelID` 和 `xshot.example.com` 替换成自己的值：
+
+```yaml
+tunnel: 你的TunnelID
+credentials-file: /root/.cloudflared/你的TunnelID.json
+
+ingress:
+  - hostname: xshot.example.com
+    service: http://127.0.0.1:8000
+  - service: http_status:404
+```
+
+绑定域名：
+
+```bash
+cloudflared tunnel route dns xshot xshot.example.com
+```
+
+安装并启动系统服务：
+
+```bash
+sudo cloudflared service install
+sudo systemctl enable cloudflared
+sudo systemctl restart cloudflared
+```
+
+检查服务：
+
+```bash
+sudo systemctl status cloudflared
+curl -I https://xshot.example.com
+```
+
+部署成功后，网页版地址是：
+
+```text
+https://xshot.example.com
+```
+
+快捷指令接口是：
+
+```text
+https://xshot.example.com/api/render?url=URL编码后的X帖子链接
 ```
 
 ## 说明

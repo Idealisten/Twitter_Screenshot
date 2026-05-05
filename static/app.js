@@ -235,7 +235,8 @@ async function loadAssets(tweet) {
     }
   }
   const quote = tweet.quote ? await loadAssets(tweet.quote) : null;
-  return { avatar, images, quote };
+  const replyParent = tweet.reply_parent ? await loadAssets(tweet.reply_parent) : null;
+  return { avatar, images, quote, reply_parent: replyParent };
 }
 
 function drawAvatar(context, image, x, y, size, name) {
@@ -609,10 +610,180 @@ function getVisibleStats(stats = {}) {
   ].filter(([, value]) => value !== undefined && value !== null && value !== "");
 }
 
+function measureTweetBlock(tweet, tweetAssets, variant = "main") {
+  const paddingX = 62;
+  const avatarSize = variant === "reply" ? 62 : 90;
+  const contentX = variant === "reply" ? paddingX + avatarSize + 14 : paddingX;
+  const contentWidth = CARD_WIDTH - contentX - paddingX;
+  const profile = textProfile(tweet.text || "");
+
+  ctx.font = font(profile.size, 420);
+  const textLines = wrapText(ctx, tweet.text || "", contentWidth);
+  const textHeight = textLines.length * profile.lineHeight;
+  const mediaTopGap = (tweet.images || []).length ? 28 : 0;
+  const measuredMediaHeight = measureMediaHeight(tweet.images || [], tweetAssets?.images || [], contentWidth);
+  const quoteTopGap = tweet.quote ? 28 : 0;
+  const measuredQuoteHeight = measureQuoteCard(tweet.quote, tweetAssets?.quote, contentWidth);
+  const contentTop = variant === "reply" ? 112 : 176;
+  const footerHeight = 74;
+  const bottomPadding = variant === "reply" ? 30 : 40;
+  const height = Math.ceil(
+    contentTop + textHeight + mediaTopGap + measuredMediaHeight + quoteTopGap + measuredQuoteHeight + footerHeight + bottomPadding,
+  );
+
+  return {
+    profile,
+    textLines,
+    mediaTopGap,
+    measuredMediaHeight,
+    quoteTopGap,
+    measuredQuoteHeight,
+    contentTop,
+    contentX,
+    contentWidth,
+    height,
+  };
+}
+
+function drawTweetFooter(context, tweet, x, y, width, statStartX, footerY) {
+  const statColor = "#536372";
+  let statX = statStartX;
+  context.font = font(29, 440);
+  context.textBaseline = "middle";
+  context.textAlign = "left";
+  const statOffsets = { reply: 50, retweet: 50, like: 50 };
+  for (const [type, value] of getVisibleStats(tweet.stats)) {
+    drawStatIcon(context, type, statX, footerY - 20, statColor);
+    context.fillStyle = statColor;
+    const textX = statX + statOffsets[type];
+    context.fillText(String(value), textX, footerY);
+    statX = textX + context.measureText(String(value)).width + 32;
+  }
+
+  const views = tweet.stats?.views;
+  const dateText = tweet.date_label || "";
+  if (dateText || views) {
+    context.textAlign = "right";
+    let rightX = x + width;
+    if (views) {
+      const viewsText = `${views} Views`;
+      context.font = font(28, 820);
+      context.fillStyle = "#0f1b16";
+      context.fillText(viewsText, rightX, footerY);
+      rightX -= context.measureText(viewsText).width;
+      context.font = font(28, 450);
+      context.fillStyle = statColor;
+      context.fillText(`${dateText} · `, rightX, footerY);
+    } else {
+      context.font = font(28, 450);
+      context.fillStyle = statColor;
+      context.fillText(dateText, rightX, footerY);
+    }
+    context.textAlign = "left";
+  }
+}
+
+function drawTweetBlock(context, tweet, tweetAssets, layout, y0, variant = "main") {
+  const paddingX = 62;
+  const author = tweet.author || {};
+  const isReply = variant === "reply";
+  const avatarSize = isReply ? 62 : 90;
+  const avatarY = y0 + (isReply ? 24 : 58);
+  const headerTextX = paddingX + avatarSize + 14;
+  const nameY = y0 + (isReply ? 50 : 94);
+  const handleY = y0 + (isReply ? 84 : 132);
+  const nameSize = isReply ? 28 : 31;
+  const handleSize = isReply ? 27 : 31;
+  const badgeSize = isReply ? 28 : 31;
+
+  drawAvatar(context, tweetAssets?.avatar, paddingX, avatarY, avatarSize, author.name);
+
+  context.textBaseline = "alphabetic";
+  context.textAlign = "left";
+  context.font = font(nameSize, 800);
+  context.fillStyle = "#0f1b16";
+  let fittedName = author.name || "X User";
+  const maxNameWidth = CARD_WIDTH - paddingX * 2 - avatarSize - (isReply ? 110 : 160);
+  while (context.measureText(fittedName).width > maxNameWidth && fittedName.length > 3) {
+    fittedName = `${fittedName.slice(0, -2)}…`;
+  }
+  context.fillText(fittedName, headerTextX, nameY);
+  const nameWidth = context.measureText(fittedName).width;
+  if (author.verified) {
+    drawInlineVerified(context, headerTextX, nameWidth, nameY, badgeSize, verifiedColor(author));
+  }
+
+  context.font = font(handleSize, 440);
+  context.fillStyle = "#536372";
+  context.fillText(`@${author.handle || "user"}`, headerTextX, handleY);
+  if (!isReply) {
+    drawXLogo(context, CARD_WIDTH - 94, y0 + 104);
+  }
+
+  context.font = font(layout.profile.size, 420);
+  context.fillStyle = "#111b16";
+  context.textBaseline = "top";
+  let y = y0 + layout.contentTop;
+  for (const line of layout.textLines) {
+    context.fillText(line, layout.contentX, y);
+    y += layout.profile.lineHeight;
+  }
+
+  if ((tweet.images || []).length) {
+    y += layout.mediaTopGap;
+    y += mediaLayout(tweet.images, tweetAssets?.images || [], layout.contentX, y, layout.contentWidth);
+  }
+
+  if (tweet.quote) {
+    y += layout.quoteTopGap;
+    y += drawQuoteCard(context, tweet.quote, tweetAssets?.quote, layout.contentX, y, layout.contentWidth);
+  }
+
+  drawTweetFooter(context, tweet, paddingX, y0, CARD_WIDTH - paddingX * 2, layout.contentX, y0 + layout.height - 65);
+}
+
+async function renderReplyThread(tweet, assets) {
+  staticPreview.classList.add("is-hidden");
+  canvas.classList.remove("is-hidden");
+  const ratio = Math.max(1, window.devicePixelRatio || 1);
+  const parent = tweet.reply_parent;
+  const parentAssets = assets.reply_parent;
+  const parentLayout = measureTweetBlock(parent, parentAssets, "main");
+  const replyLayout = measureTweetBlock(tweet, assets, "reply");
+  const gap = 30;
+  const replyY = parentLayout.height + gap;
+  const cardHeight = Math.ceil(parentLayout.height + gap + replyLayout.height);
+
+  canvas.width = Math.round(CARD_WIDTH * ratio);
+  canvas.height = Math.round(cardHeight * ratio);
+  canvas.style.width = `min(100%, ${CARD_WIDTH}px)`;
+  canvas.style.height = "auto";
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, CARD_WIDTH, cardHeight);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, CARD_WIDTH, cardHeight);
+
+  drawTweetBlock(ctx, parent, parentAssets, parentLayout, 0, "main");
+
+  ctx.strokeStyle = "#d8e3e9";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(62, parentLayout.height + 8);
+  ctx.lineTo(CARD_WIDTH - 62, parentLayout.height + 8);
+  ctx.stroke();
+
+  drawTweetBlock(ctx, tweet, assets, replyLayout, replyY, "reply");
+  downloadBtn.disabled = false;
+}
+
 async function renderCard(tweet) {
   staticPreview.classList.add("is-hidden");
   canvas.classList.remove("is-hidden");
   const assets = await loadAssets(tweet);
+  if (tweet.reply_parent) {
+    await renderReplyThread(tweet, assets);
+    return;
+  }
   const ratio = Math.max(1, window.devicePixelRatio || 1);
   const paddingX = 62;
   const maxTextWidth = CARD_WIDTH - paddingX * 2;

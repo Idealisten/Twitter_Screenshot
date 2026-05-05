@@ -230,13 +230,15 @@ def parse_api_tweet(tweet: dict[str, Any], raw_url: str) -> dict[str, Any]:
         },
         "images": images[:4],
         "lang": tweet.get("lang") or "",
+        "replying_to": tweet.get("replying_to") or "",
+        "replying_to_status": tweet.get("replying_to_status") or "",
     }
     if tweet.get("quote"):
         data["quote"] = parse_api_tweet(tweet["quote"], tweet["quote"].get("url") or raw_url)
     return data
 
 
-def fetch_fxtwitter(raw_url: str) -> dict[str, Any]:
+def fetch_fxtwitter(raw_url: str, include_reply_parent: bool = True) -> dict[str, Any]:
     info = parse_status_url(raw_url)
     api_url = f"https://api.fxtwitter.com/{quote(info['screen_name'])}/status/{info['status_id']}"
     response = requests.get(api_url, headers=REQUEST_HEADERS, timeout=12)
@@ -250,6 +252,13 @@ def fetch_fxtwitter(raw_url: str) -> dict[str, Any]:
     data["source"] = "fxtwitter"
     if not data["id"]:
         data["id"] = info["status_id"]
+    if include_reply_parent and data.get("replying_to") and data.get("replying_to_status"):
+        parent_url = f"https://x.com/{quote(str(data['replying_to']))}/status/{quote(str(data['replying_to_status']))}"
+        if data.get("id") != data.get("replying_to_status"):
+            try:
+                data["reply_parent"] = fetch_fxtwitter(parent_url, include_reply_parent=False)
+            except Exception as exc:  # noqa: BLE001 - keep rendering the reply if the parent fetch fails.
+                data.setdefault("warnings", []).append(f"原帖抓取失败：{exc}")
     return data
 
 
@@ -304,7 +313,7 @@ def fetch_tweet(raw_url: str) -> dict[str, Any]:
         try:
             data = fetcher(raw_url)
             if data.get("text") or data.get("images"):
-                data["warnings"] = errors
+                data["warnings"] = [*(data.get("warnings") or []), *errors]
                 return data
         except Exception as exc:  # noqa: BLE001 - surface provider fallbacks to the UI.
             errors.append(str(exc))

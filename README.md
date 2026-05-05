@@ -23,7 +23,7 @@ HOST=127.0.0.1 PORT=9000 python3 app.py
 
 ## Docker 部署
 
-服务器部署和后续更新的详细步骤见：[DEPLOY.md](DEPLOY.md)。
+服务器部署、后续更新和公网排查 checklist 见：[DEPLOY.md](DEPLOY.md)。
 
 ### 1. 构建镜像
 

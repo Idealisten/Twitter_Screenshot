@@ -21,9 +21,78 @@ http://127.0.0.1:8000
 HOST=127.0.0.1 PORT=9000 python3 app.py
 ```
 
+## 本地更新后推送到 GitHub
+
+本地确认页面和生成效果都没问题后，推荐用发布脚本完成固定流程：
+
+```bash
+./publish.sh "本次更新说明"
+```
+
+它会自动执行：
+
+1. 检查 `static/app.js` 语法。
+2. 检查 diff 中的空白和冲突标记问题。
+3. 暂存当前所有本地改动。
+4. 用你传入的说明创建 commit。
+5. 推送当前分支到 GitHub。
+
+例如：
+
+```bash
+./publish.sh "Redesign homepage hero"
+```
+
+如果只是临时要跳过检查：
+
+```bash
+SKIP_CHECKS=1 ./publish.sh "本次更新说明"
+```
+
+注意：脚本会暂存当前工作区里的所有改动。运行前先确认 `git status --short` 里没有不想一起提交的文件。
+
 ## Docker 部署
 
 服务器部署、后续更新和公网排查 checklist 见：[DEPLOY.md](DEPLOY.md)。
+
+## 服务器同步 GitHub 最新版
+
+当本地已经推送到 GitHub 后，在服务器上进入项目目录，拉取最新代码、重建镜像、重启容器：
+
+```bash
+cd /opt/Twitter_Screenshot
+git pull
+docker build -t twitter-screenshot .
+./run-docker.sh
+```
+
+`./run-docker.sh` 会先尝试复用当前容器使用的端口；如果端口被占用，会从 `8000` 开始自动向后尝试。启动完成后看脚本输出的地址：
+
+```text
+local URL: http://127.0.0.1:8000
+```
+
+如果输出的端口不是 `8000`，要同步修改 Cloudflare Tunnel 配置里的 `service`，例如：
+
+```yaml
+service: http://127.0.0.1:8001
+```
+
+然后重启 Cloudflare Tunnel：
+
+```bash
+sudo systemctl restart cloudflared
+```
+
+最后检查：
+
+```bash
+docker ps
+curl -I http://127.0.0.1:8000
+curl -I https://xshot.example.com
+```
+
+如果 `./run-docker.sh` 输出的是其他端口，把上面本地 `curl` 的端口替换成实际端口。
 
 ### 1. 构建镜像
 

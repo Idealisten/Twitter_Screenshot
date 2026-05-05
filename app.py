@@ -337,6 +337,8 @@ def serve_file(handler: BaseHTTPRequestHandler, path: Path) -> None:
     content = path.read_bytes()
     handler.send_response(200)
     handler.send_header("Content-Type", mime_type)
+    handler.send_header("Cache-Control", "no-store, max-age=0")
+    handler.send_header("Pragma", "no-cache")
     handler.send_header("Content-Length", str(len(content)))
     handler.end_headers()
     handler.wfile.write(content)

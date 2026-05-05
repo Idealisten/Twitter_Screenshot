@@ -870,6 +870,9 @@ class AppHandler(BaseHTTPRequestHandler):
         if parsed.path == "/":
             serve_file(self, STATIC / "index.html")
             return
+        if parsed.path in {"/favicon.ico", "/favicon.svg"}:
+            serve_file(self, STATIC / "favicon.svg")
+            return
         if parsed.path.startswith("/static/"):
             requested = (STATIC / parsed.path.removeprefix("/static/")).resolve()
             if STATIC.resolve() not in requested.parents and requested != STATIC.resolve():

@@ -943,4 +943,4 @@ urlInput.addEventListener("keydown", (event) => {
   }
 });
 
-setMessage("粘贴 X 帖子链接后生成分享图。");
+setMessage("");

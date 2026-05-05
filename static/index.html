@@ -4,45 +4,53 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>X 分享图生成器</title>
-    <link rel="stylesheet" href="/static/styles.css?v=20260505-reply-thread" />
+    <link rel="stylesheet" href="/static/styles.css?v=20260505-pastel-hero" />
   </head>
   <body>
     <main class="app-shell">
-      <section class="tool-panel" aria-label="分享图生成器">
-        <div class="controls">
-          <label class="url-field">
-            <span>X 帖子链接</span>
-            <input
-              id="tweetUrl"
-              type="url"
-              inputmode="url"
-              placeholder="https://x.com/username/status/1234567890"
-              autocomplete="off"
-            />
-          </label>
-          <button id="generateBtn" type="button">
-            <span class="btn-icon">↗</span>
-            生成分享图
-          </button>
-          <button id="downloadBtn" type="button" disabled>
-            <span class="btn-icon">↓</span>
-            下载 PNG
-          </button>
-        </div>
-        <div id="message" class="message" role="status"></div>
-      </section>
+      <section class="hero" aria-label="X 分享图生成器">
+        <div class="hero-copy">
+          <p class="eyebrow">XShot</p>
+          <h1>Perfect and beautiful X screenshots</h1>
+          <p class="lede">Paste a post URL and turn it into a clean share image.</p>
 
-      <section class="preview-wrap" aria-label="图片预览">
-        <img
-          id="staticPreview"
-          class="static-preview"
-          src="/static/default-preview.svg"
-          alt="默认分享图展示"
-        />
-        <canvas id="cardCanvas" class="is-hidden" width="980" height="900"></canvas>
+          <div class="tool-panel">
+            <label class="url-field">
+              <span>X 帖子链接</span>
+              <input
+                id="tweetUrl"
+                type="url"
+                inputmode="url"
+                placeholder="Paste the X post URL here"
+                autocomplete="off"
+              />
+            </label>
+            <div class="actions">
+              <button id="generateBtn" type="button">
+                <span class="btn-icon">↗</span>
+                Screenshot
+              </button>
+              <button id="downloadBtn" type="button" disabled>
+                <span class="btn-icon">↓</span>
+                Download
+              </button>
+            </div>
+          </div>
+          <div id="message" class="message" role="status"></div>
+        </div>
+
+        <div class="preview-wrap" aria-label="图片预览">
+          <img
+            id="staticPreview"
+            class="static-preview"
+            src="/static/assets/hero-preview.png"
+            alt="首页分享图展示"
+          />
+          <canvas id="cardCanvas" class="is-hidden" width="980" height="900"></canvas>
+        </div>
       </section>
     </main>
 
-    <script src="/static/app.js?v=20260505-reply-thread"></script>
+    <script src="/static/app.js?v=20260505-pastel-hero"></script>
   </body>
 </html>
